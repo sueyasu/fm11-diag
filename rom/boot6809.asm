@@ -39,9 +39,11 @@ DMA_COMMON_CTRL     equ       $FD54
 DMA_COMMON_IRQ      equ       $FD55
 DMA_PRIORITY        equ       $FD56
 DMA_MASTER_CTRL     equ       $FD57
+DIAG_REASON         equ       $03E0  * RAM, never a ROM variable
                     org       $5000
 start               orcc      #$50
                     lds       #$3F00
+                    clr       >DIAG_REASON
 * Initialize USART0 8251A: reset, mode 8N1 x16, Tx/Rx enabled.
                     clr       >UART_STAT
                     clr       >UART_STAT
@@ -86,9 +88,15 @@ restore_wait        lda       >FDC_CMD
                     beq       restore_done
                     leau      -1,u
                     bne       restore_wait
+                    lda       #'R
+                    sta       >DIAG_REASON
                     bra       failed
 restore_done        bita      #$90
-                    bne       failed
+                    beq       restore_ok
+                    lda       #'r
+                    sta       >DIAG_REASON
+                    bra       failed
+restore_ok
                     clr       >FDC_TRACK
                     clr       >FDC_SIDE
                     lda       #1
@@ -105,6 +113,10 @@ read_loop           lbsr      read_dma
                     jmp       $0400
 failed              ldx       #msg_fail
                     lbsr      puts
+                    ldx       #msg_reason
+                    lbsr      puts
+                    lda       >DIAG_REASON
+                    lbsr      uart_char
                     ldx       #msg_sector
                     lbsr      puts
                     lda       >FDC_SECTOR
@@ -142,30 +154,47 @@ read_dma            clr       >DMA_MODE
 dma_retry           ldu       #$FFFF
 dma_poll            lda       >DMA_MODE
                     bita      #$40
-                    bne       dma_bad
+                    bne       dma_error
                     bita      #$80
                     bne       dma_ok
                     lda       >FDC_CMD
                     bita      #$9C
-                    bne       dma_bad
+                    bne       fdc_error
                     leau      -1,u
                     bne       dma_poll
                     leay      -1,y
                     bne       dma_retry
-dma_bad             puls      y
-                    orcc      #1
-                    rts
+                    lda       #'T
+                    bra       dma_error_record
+dma_error           lda       #'D
+                    bra       dma_error_record
+fdc_error           lda       #'F
+                    bra       dma_error_record
 dma_ok              clr       >DMA_MODE
                     lda       >FDC_CMD
                     bita      #$9C
-                    bne       dma_bad
+                    beq       dma_success
+                    lda       #'C
+                    bra       dma_error_record
+dma_error_record    sta       >DIAG_REASON
                     puls      y
+                    orcc      #1
+                    rts
+dma_success         puls      y
                     leax      ROM_SECTOR_BYTES,x
                     andcc     #$FE
                     rts
 
 * Raw register hex output makes the first failing sector observable.
 * These helpers use the same USART0 TXRDY polling as puts.
+uart_char           pshs      a
+uchar_wait          lda       >UART_STAT
+                    bita      #1
+                    beq       uchar_wait
+                    puls      a
+                    sta       >UART_DATA
+                    rts
+
 hex_word            pshs      b
                     lbsr      hex_byte
                     puls      a
@@ -207,7 +236,9 @@ msg_ok              fcc       "DIAG ROM: IPL DMA PASS"
                     fcb       13,10,0
 msg_fail            fcc       "DIAG ROM: DMA FAIL"
                     fcb       13,10,0
-msg_sector          fcc       "  SECTOR="
+msg_reason          fcc       "  CAUSE="
+                    fcb       0
+msg_sector          fcc       " SECTOR="
                     fcb       0
 msg_fdc             fcc       " FDC="
                     fcb       0
