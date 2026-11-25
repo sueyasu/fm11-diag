@@ -93,6 +93,24 @@ read_loop           lbsr      read_dma
                     jmp       $0400
 failed              ldx       #msg_fail
                     lbsr      puts
+                    ldx       #msg_sector
+                    lbsr      puts
+                    lda       >FDC_SECTOR
+                    lbsr      hex_byte
+                    ldx       #msg_fdc
+                    lbsr      puts
+                    lda       >FDC_CMD
+                    lbsr      hex_byte
+                    ldx       #msg_dma
+                    lbsr      puts
+                    lda       >DMA_MODE
+                    lbsr      hex_byte
+                    ldx       #msg_count
+                    lbsr      puts
+                    ldd       >DMA_COUNT
+                    lbsr      hex_word
+                    ldx       #msg_newline
+                    lbsr      puts
 failed_loop         bra       failed_loop
 
 * Program a single physical sector; no PIO byte transfers.
@@ -115,8 +133,7 @@ dma_poll            lda       >DMA_MODE
                     bne       dma_bad
                     leau      -1,u
                     bne       dma_poll
-dma_bad             clr       >DMA_MODE
-                    orcc      #1
+dma_bad             orcc      #1
                     rts
 dma_ok              clr       >DMA_MODE
                     lda       >FDC_CMD
@@ -124,6 +141,33 @@ dma_ok              clr       >DMA_MODE
                     bne       dma_bad
                     leax      ROM_SECTOR_BYTES,x
                     andcc     #$FE
+                    rts
+
+* Raw register hex output makes the first failing sector observable.
+* These helpers use the same USART0 TXRDY polling as puts.
+hex_word            pshs      b
+                    lbsr      hex_byte
+                    puls      a
+                    bra       hex_byte
+hex_byte            pshs      a
+                    lsra
+                    lsra
+                    lsra
+                    lsra
+                    lbsr      hex_nibble
+                    puls      a
+                    anda      #$0F
+hex_nibble          anda      #$0F
+                    adda      #'0
+                    cmpa      #'9
+                    bls       hex_emit
+                    adda      #7
+hex_emit            pshs      a
+hex_wait            lda       >UART_STAT
+                    bita      #1
+                    beq       hex_wait
+                    puls      a
+                    sta       >UART_DATA
                     rts
 
 puts                lda       ,x+
@@ -142,4 +186,13 @@ msg_ok              fcc       "DIAG ROM: IPL DMA PASS"
                     fcb       13,10,0
 msg_fail            fcc       "DIAG ROM: DMA FAIL"
                     fcb       13,10,0
+msg_sector          fcc       "  SECTOR="
+                    fcb       0
+msg_fdc             fcc       " FDC="
+                    fcb       0
+msg_dma             fcc       " DMA="
+                    fcb       0
+msg_count           fcc       " REM="
+                    fcb       0
+msg_newline         fcb       13,10,0
                     end       start
