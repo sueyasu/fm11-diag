@@ -87,6 +87,7 @@ restore_wait        lda       >FDC_CMD
                     bita      #1
                     beq       restore_done
                     leau      -1,u
+                    cmpu      #0
                     bne       restore_wait
                     lda       #'R
                     sta       >DIAG_REASON
@@ -161,6 +162,7 @@ dma_poll            lda       >DMA_MODE
                     bita      #$9C
                     bne       fdc_error
                     leau      -1,u
+                    cmpu      #0
                     bne       dma_poll
                     leay      -1,y
                     bne       dma_retry
