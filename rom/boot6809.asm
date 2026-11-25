@@ -48,6 +48,13 @@ start               orcc      #$50
                     sta       >UART_STAT
                     lda       #$37
                     sta       >UART_STAT
+* Wait for the terminal to connect and send one character before
+* emitting anything. RXRDY is bit 1 of the 8251A status register.
+* Read FD06 to consume the key (it is not forwarded to the IPL).
+wait_key            lda       >UART_STAT
+                    bita      #$02
+                    beq       wait_key
+                    lda       >UART_DATA
                     ldx       #msg_rom
                     lbsr      puts
                     clr       >DMA_MODE
