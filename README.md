@@ -73,6 +73,25 @@ uses individual 128/256-byte transfers to make a failing sector
 identifiable. Therefore success/failure of this diagnostic remains
 a separate observation from the stock-ROM IPL loader.
 
+## Failure classification
+
+A ROM boot failure now prints `CAUSE=<letter>` alongside FDC status,
+DMA mode and remaining count:
+
+| Cause | Origin |
+| --- | --- |
+| `R` | RESTORE still BUSY after timeout |
+| `r` | RESTORE reported an error |
+| `T` | READ SECTOR DMA polling timeout |
+| `D` | DMA channel error bit |
+| `F` | FDC error bit during DMA polling |
+| `C` | FDC error after the DMA completion flag |
+
+The reason is kept at low RAM `$03E0`, not in the read-only ROM area.
+These codes distinguish the ROM's decision from later emulator FDC
+events. For instance a completed DMA event in an emulator trace does
+not prove it occurred before the ROM's timeout.
+
 ## Disk layout
 
 - 2D: C0/H0/S1-S2 = 512-byte IPL; C0/H0/S3 = 256-byte OS.
