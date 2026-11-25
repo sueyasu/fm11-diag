@@ -35,6 +35,10 @@ DMA_BANK            equ       $FD95
 ROM_SECTORS         equ       4
 ROM_SECTOR_BYTES    equ       128
                     endc
+DMA_COMMON_CTRL     equ       $FD54
+DMA_COMMON_IRQ      equ       $FD55
+DMA_PRIORITY        equ       $FD56
+DMA_MASTER_CTRL     equ       $FD57
                     org       $5000
 start               orcc      #$50
                     lds       #$3F00
@@ -57,16 +61,24 @@ wait_key            lda       >UART_STAT
                     lda       >UART_DATA
                     ldx       #msg_rom
                     lbsr      puts
+* Match the stock 6809 boot ROM's HD6844 master setup.
+* Stock ROM at $5BA9: FD57=00, FD54=03, FD55=00, FD56=08.
+                    clr       >DMA_MASTER_CTRL
                     clr       >DMA_MODE
                     clr       >DMA_BANK
-                    ifeq      HD
-                    lda       #$80             * mini-FDC motor on, unit 0
-                    sta       >FDC_DRIVE
-                    else
+                    lda       #$03
+                    sta       >DMA_COMMON_CTRL
+                    clr       >DMA_COMMON_IRQ
+                    lda       #$08
+                    sta       >DMA_PRIORITY
+* The stock ROM selects unit 0 in FD1D/FD35. Bit 7 in FD1D
+* is not required for the mini-FDC drive selection.
                     clr       >FDC_DRIVE
-                    endc
-* Restore the physical head before requesting the first boot sector.
-                    lda       #$0B
+* The stock boot path sends Force Interrupt before RESTORE.
+                    lda       #$D0
+                    sta       >FDC_CMD
+* Restore head with 6 ms step rate (the stock ROM uses $08).
+                    lda       #$08
                     sta       >FDC_CMD
                     ldu       #$FFFF
 restore_wait        lda       >FDC_CMD
