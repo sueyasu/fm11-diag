@@ -52,7 +52,24 @@ start               orcc      #$50
                     lbsr      puts
                     clr       >DMA_MODE
                     clr       >DMA_BANK
+                    ifeq      HD
+                    lda       #$80             * mini-FDC motor on, unit 0
+                    sta       >FDC_DRIVE
+                    else
                     clr       >FDC_DRIVE
+                    endc
+* Restore the physical head before requesting the first boot sector.
+                    lda       #$0B
+                    sta       >FDC_CMD
+                    ldu       #$FFFF
+restore_wait        lda       >FDC_CMD
+                    bita      #1
+                    beq       restore_done
+                    leau      -1,u
+                    bne       restore_wait
+                    bra       failed
+restore_done        bita      #$90
+                    bne       failed
                     clr       >FDC_TRACK
                     clr       >FDC_SIDE
                     lda       #1
