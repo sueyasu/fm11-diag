@@ -39,6 +39,8 @@ emulator configuration.
 Run the same combination first with `[floppy] timing = fast`, then
 `[floppy] timing = timed`.
 
+After launching the emulator, connect picocom to its USART0 PTY and **press one key** (for example Enter). The diagnostic ROM waits for RXRDY before sending its first message. No prompt is printed before the keypress, by design.
+
 Expected serial milestones:
 
 ```text
