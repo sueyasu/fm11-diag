@@ -16,7 +16,8 @@ def build_image(hd: bool, ipl: bytes, os_payload: bytes) -> bytes:
     tracks = 77 if hd else 40
     sectors = 26 if hd else 16
     out = bytearray(HEADER)
-    out[0:14] = b"FM11 DIAG 2HD" if hd else b"FM11 DIAG 2D"
+    label = b"FM11 DIAG 2HD" if hd else b"FM11 DIAG 2D"
+    out[0:len(label)] = label
     out[0x1B] = 0x20 if hd else 0x10
     for track in range(tracks * 2):
         struct.pack_into("<I", out, 0x20 + track * 4, len(out))
