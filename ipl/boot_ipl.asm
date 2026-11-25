@@ -61,6 +61,7 @@ wait_dma            lda       >DMA_MODE
                     bita      #$9C
                     bne       failed
                     leau      -1,u
+                    cmpu      #0
                     bne       wait_dma
                     leay      -1,y
                     bne       dma_retry
