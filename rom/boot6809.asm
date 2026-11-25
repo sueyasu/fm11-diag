@@ -122,7 +122,12 @@ read_dma            clr       >DMA_MODE
                     sta       >DMA_MODE
                     lda       #$80
                     sta       >FDC_CMD
-                    ldu       #$FFFF
+* Keep the timeout longer than several disk revolutions even
+* when the emulated 6809 runs much faster than its nominal clock.
+* Y is the sector loop counter, so save it while polling.
+                    pshs      y
+                    ldy       #32
+dma_retry           ldu       #$FFFF
 dma_poll            lda       >DMA_MODE
                     bita      #$40
                     bne       dma_bad
@@ -133,9 +138,13 @@ dma_poll            lda       >DMA_MODE
                     bne       dma_bad
                     leau      -1,u
                     bne       dma_poll
-dma_bad             orcc      #1
+                    leay      -1,y
+                    bne       dma_retry
+dma_bad             puls      y
+                    orcc      #1
                     rts
-dma_ok              clr       >DMA_MODE
+dma_ok              puls      y
+                    clr       >DMA_MODE
                     lda       >FDC_CMD
                     bita      #$9C
                     bne       dma_bad
