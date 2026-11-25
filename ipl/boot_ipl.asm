@@ -49,7 +49,9 @@ entry               ldx       #hello
                     sta       >DMA_MODE
                     lda       #$80
                     sta       >FDC_CMD
-                    ldu       #$FFFF
+* Allow multiple disk revolutions independently of CPU speed.
+                    ldy       #32
+dma_retry           ldu       #$FFFF
 wait_dma            lda       >DMA_MODE
                     bita      #$40
                     bne       failed
@@ -60,6 +62,8 @@ wait_dma            lda       >DMA_MODE
                     bne       failed
                     leau      -1,u
                     bne       wait_dma
+                    leay      -1,y
+                    bne       dma_retry
                     bra       failed
 complete            clr       >DMA_MODE
                     lda       >FDC_CMD
