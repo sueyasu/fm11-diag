@@ -57,6 +57,22 @@ checks the channel DEND bit and FDC error flags; the final payload only
 prints READY and loops. No timer-based benchmark is claimed in this first
 version.
 
+## Stock-ROM initialization alignment
+
+The diagnostic ROM now performs the initial controller setup observed in the
+original 4 KiB FM-11 6809 boot ROM: Force Interrupt (`$D0`) before
+RESTORE (`$08`), and the HD6844 shared registers
+`FD57=$00`, `FD54=$03`, `FD55=$00`, `FD56=$08`.
+The boot drive register selects unit zero without an undocumented
+motor bit. Channel-specific DMA registers remain FD40/42/50/94
+for 2D or FD44/46/51/95 for 2HD.
+
+The stock ROM uses a broader DMA transfer count (initially `$0400`)
+with a different sector loop; the diagnostic ROM deliberately
+uses individual 128/256-byte transfers to make a failing sector
+identifiable. Therefore success/failure of this diagnostic remains
+a separate observation from the stock-ROM IPL loader.
+
 ## Disk layout
 
 - 2D: C0/H0/S1-S2 = 512-byte IPL; C0/H0/S3 = 256-byte OS.
