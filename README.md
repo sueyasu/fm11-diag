@@ -73,6 +73,19 @@ uses individual 128/256-byte transfers to make a failing sector
 identifiable. Therefore success/failure of this diagnostic remains
 a separate observation from the stock-ROM IPL loader.
 
+## 6809 polling-loop correction
+
+The initial diagnostic ROM and IPL mistakenly used `LEAU -1,U`
+followed directly by `BNE`. **LEAU does not alter the MC6809
+condition codes**: the branch inadvertently tested the preceding
+`BITA` result instead of the counter. In practice, the nominal
+32 × 65535-poll DMA timeout could expire almost immediately, while
+the emulator completed the queued read later.
+
+All affected RESTORE and DMA loops now execute `CMPU #0` before
+`BNE`. `make check` includes a source-level regression assertion
+to catch this error.
+
 ## Failure classification
 
 A ROM boot failure now prints `CAUSE=<letter>` alongside FDC status,
