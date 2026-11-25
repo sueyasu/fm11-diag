@@ -143,11 +143,11 @@ dma_poll            lda       >DMA_MODE
 dma_bad             puls      y
                     orcc      #1
                     rts
-dma_ok              puls      y
-                    clr       >DMA_MODE
+dma_ok              clr       >DMA_MODE
                     lda       >FDC_CMD
                     bita      #$9C
                     bne       dma_bad
+                    puls      y
                     leax      ROM_SECTOR_BYTES,x
                     andcc     #$FE
                     rts
